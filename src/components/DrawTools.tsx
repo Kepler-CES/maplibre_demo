@@ -1,14 +1,11 @@
 import { Feature, FeatureCollection, LineString, Polygon } from "geojson";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Layer, MapRef, Source } from "react-map-gl/maplibre";
 import { styled } from "styled-components";
 
 interface DrawToolsProps {
   mapRef: React.RefObject<MapRef | null>;
-  clickEvent: maplibregl.MapMouseEvent | null;
-  dbClickEvent: maplibregl.MapMouseEvent | null;
-  moveEvent: maplibregl.MapMouseEvent | null;
 }
 
 const IconDiv = styled.div<{ padding: number }>`
@@ -23,12 +20,7 @@ const IconDiv = styled.div<{ padding: number }>`
   box-sizing: border-box;
 `;
 
-function DrawTools({
-  mapRef,
-  clickEvent,
-  dbClickEvent,
-  moveEvent,
-}: DrawToolsProps) {
+function DrawTools({ mapRef }: DrawToolsProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const [polygons, setPolygons] = useState<Array<Array<[number, number]>>>([]);
   const [points, setPoints] = useState<[number, number][]>([]);
@@ -36,6 +28,58 @@ function DrawTools({
     null
   );
   const [isToolClicked, setIsToolClicked] = useState<boolean>();
+
+  // 최신 points를 항상 참조하기 위한 ref
+  const pointsRef = useRef(points);
+  useEffect(() => {
+    pointsRef.current = points;
+  }, [points]);
+
+  // 이벤트 등록
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current.getMap();
+
+    if (!isDrawing) return;
+
+    const handleClick = (e: maplibregl.MapMouseEvent) => {
+      const { lng, lat } = e.lngLat;
+      setPoints((prev) => [...prev, [lng, lat]]);
+    };
+
+    const handleDblClick = (e: maplibregl.MapMouseEvent) => {
+      e.preventDefault();
+      finishDrawing();
+    };
+
+    const handleMouseMove = (e: maplibregl.MapMouseEvent) => {
+      if (pointsRef.current.length >= 2) {
+        setCursor({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+      }
+    };
+
+    map.on("click", handleClick);
+    map.on("dblclick", handleDblClick);
+    map.on("mousemove", handleMouseMove);
+
+    return () => {
+      map.off("click", handleClick);
+      map.off("dblclick", handleDblClick);
+      map.off("mousemove", handleMouseMove);
+    };
+  }, [mapRef, isDrawing]);
+
+  // 그리기 종료
+  const finishDrawing = useCallback(() => {
+    if (pointsRef.current.length < 3) {
+      alert("폴리곤은 최소 3개의 점이 필요해요!");
+      return;
+    }
+    setPolygons((prev) => [...prev, pointsRef.current]);
+    setPoints([]);
+    setIsDrawing(false);
+    setCursor(null);
+  }, []);
 
   const polygonCoords =
     points.length >= 2 && cursor
@@ -45,45 +89,6 @@ function DrawTools({
           points[0], // 폴리곤 닫기
         ]
       : null;
-
-  useEffect(() => {
-    if (!isDrawing) return;
-    if (clickEvent) {
-      const { lng, lat } = clickEvent.lngLat;
-      setPoints((prev) => [...prev, [lng, lat]]);
-    }
-  }, [clickEvent]);
-
-  useEffect(() => {
-    if (!isDrawing) return;
-
-    if (dbClickEvent) {
-      dbClickEvent.preventDefault(); // 줌 방지
-      finishDrawing();
-    }
-  }, [dbClickEvent]);
-
-  useEffect(() => {
-    if (!isDrawing) return;
-
-    if (moveEvent) {
-      if (points.length >= 2) {
-        setCursor({ lng: moveEvent.lngLat.lng, lat: moveEvent.lngLat.lat });
-      }
-    }
-  }, [moveEvent]);
-
-  // 그리기 종료
-  const finishDrawing = useCallback(() => {
-    if (points.length < 3) {
-      alert("폴리곤은 최소 3개의 점이 필요해요!");
-      return;
-    }
-    setPolygons((prev) => [...prev, points]);
-    setPoints([]);
-    setIsDrawing(false);
-    setCursor(null);
-  }, [points]);
 
   const polygonGeoJSON: FeatureCollection<Polygon> = {
     type: "FeatureCollection",
