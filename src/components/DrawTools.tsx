@@ -7,6 +7,10 @@ import { styled } from "styled-components";
 interface DrawToolsProps {
   mapRef: React.RefObject<MapRef | null>;
 }
+const POLY = "polygon";
+const CIRC = "circle";
+const RECT = "rect";
+type DrawMode = "polygon" | "circle" | "rect" | null;
 
 const IconDiv = styled.div<{ padding: number }>`
   width: 100%;
@@ -19,10 +23,6 @@ const IconDiv = styled.div<{ padding: number }>`
   padding: ${(props) => props.padding}px;
   box-sizing: border-box;
 `;
-const POLY = "polygon";
-const CIRC = "circle";
-const RECT = "rect";
-type DrawMode = "polygon" | "circle" | "rect" | null;
 
 const RadiusLabel = styled.div`
   background: rgba(255, 255, 255, 0.95);
@@ -66,10 +66,6 @@ function DrawTools({ mapRef }: DrawToolsProps) {
   useEffect(() => {
     pointsRef.current = points;
   }, [points]);
-
-  useEffect(() => {
-    console.log("##rectTemp", rectTemp);
-  }, [rectTemp]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -117,6 +113,7 @@ function DrawTools({ mapRef }: DrawToolsProps) {
       const handleWheel = (e: maplibregl.MapWheelEvent) => {
         if (circleTemp) {
           e.preventDefault();
+          //TODO: 마우스 휠 움직일때 뒤에 배경 움직이는거 방지필요
           let nextRadius =
             circleTemp.radius + (e.originalEvent.deltaY > 0 ? 20 : -20);
           if (nextRadius < 20) nextRadius = 20;
@@ -133,7 +130,6 @@ function DrawTools({ mapRef }: DrawToolsProps) {
     if (drawMode === RECT) {
       let isRectStarted = false;
       const handleClick = (e: maplibregl.MapMouseEvent) => {
-        console.log("##??", isRectStarted, rectTemp);
         if (!rectTemp) {
           setRectTemp({
             start: [e.lngLat.lng, e.lngLat.lat],

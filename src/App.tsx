@@ -1,10 +1,8 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRef, useState } from "react";
 import Map, {
-  AttributionControl,
   FullscreenControl,
   GeolocateControl,
-  LogoControl,
   MapRef,
   Marker,
   NavigationControl,
@@ -76,8 +74,8 @@ export default function MapView() {
           onGeolocate={(e) => console.log("위치 찾음", e.coords)}
           onError={(e) => console.error("위치 에러", e)}
         />
-        <LogoControl />
-        <AttributionControl customAttribution="Map design by Kepler" />
+        {/* <LogoControl /> */}
+        {/* <AttributionControl customAttribution="Map design by Kepler" /> */}
         <ScaleControl />
         <DrawTools mapRef={mapRef} />
       </StyledMap>
